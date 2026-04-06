@@ -1,0 +1,224 @@
+{
+  "datasets": [
+    {
+      "name": "83e08769",
+      "displayName": "Top Twenty Player Stats and Value Rankings Summary",
+      "queryLines": [
+        "SELECT display_name, team_name, position, current_price,\n",
+        "       total_points, points_per_million\n",
+        "FROM player_value_rankings\n",
+        "LIMIT 20;"
+      ],
+      "catalog": "fpl_project",
+      "schema": "gold"
+    },
+    {
+      "name": "dbfd2c2a",
+      "displayName": "Player Performance Metrics By Position Summary",
+      "queryLines": [
+        "SELECT position,\n",
+        "       ROUND(AVG(points_per_million), 2) AS avg_ppm,\n",
+        "       COUNT(*) AS player_count\n",
+        "FROM player_value_rankings\n",
+        "GROUP BY position\n",
+        "ORDER BY avg_ppm DESC"
+      ],
+      "catalog": "fpl_project",
+      "schema": "gold"
+    }
+  ],
+  "pages": [
+    {
+      "name": "87402ac3",
+      "displayName": "FPL-PAGE",
+      "layout": [
+        {
+          "widget": {
+            "name": "1e22ebfb",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "83e08769",
+                  "fields": [
+                    {
+                      "name": "display_name",
+                      "expression": "`display_name`"
+                    },
+                    {
+                      "name": "team_name",
+                      "expression": "`team_name`"
+                    },
+                    {
+                      "name": "position",
+                      "expression": "`position`"
+                    },
+                    {
+                      "name": "current_price",
+                      "expression": "`current_price`"
+                    },
+                    {
+                      "name": "total_points",
+                      "expression": "`total_points`"
+                    },
+                    {
+                      "name": "points_per_million",
+                      "expression": "`points_per_million`"
+                    }
+                  ],
+                  "disaggregated": true
+                }
+              }
+            ],
+            "spec": {
+              "version": 2,
+              "style": {
+                "fontColor": {
+                  "light": "#37536B"
+                }
+              },
+              "widgetType": "table",
+              "encodings": {
+                "columns": [
+                  {
+                    "fieldName": "display_name"
+                  },
+                  {
+                    "fieldName": "team_name"
+                  },
+                  {
+                    "fieldName": "position"
+                  },
+                  {
+                    "fieldName": "current_price"
+                  },
+                  {
+                    "fieldName": "total_points"
+                  },
+                  {
+                    "fieldName": "points_per_million"
+                  }
+                ]
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 0,
+            "width": 9,
+            "height": 5
+          }
+        },
+        {
+          "widget": {
+            "name": "0b76cffc",
+            "queries": [
+              {
+                "name": "main_query",
+                "query": {
+                  "datasetName": "dbfd2c2a",
+                  "fields": [
+                    {
+                      "name": "position",
+                      "expression": "`position`"
+                    },
+                    {
+                      "name": "sum(avg_ppm)",
+                      "expression": "SUM(`avg_ppm`)"
+                    }
+                  ],
+                  "disaggregated": false
+                }
+              }
+            ],
+            "spec": {
+              "version": 3,
+              "mark": {
+                "colors": [
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 2
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 3
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 4
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 5
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 6
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 7
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 8
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 9
+                  },
+                  {
+                    "themeColorType": "visualizationColors",
+                    "position": 10
+                  }
+                ]
+              },
+              "widgetType": "bar",
+              "encodings": {
+                "x": {
+                  "fieldName": "position",
+                  "scale": {
+                    "type": "categorical"
+                  }
+                },
+                "y": {
+                  "fieldName": "sum(avg_ppm)",
+                  "scale": {
+                    "type": "quantitative"
+                  }
+                },
+                "label": {
+                  "show": true
+                }
+              }
+            }
+          },
+          "position": {
+            "x": 0,
+            "y": 5,
+            "width": 9,
+            "height": 6
+          }
+        }
+      ],
+      "pageType": "PAGE_TYPE_CANVAS",
+      "layoutVersion": "GRID_V1"
+    },
+    {
+      "name": "354bb6e2",
+      "displayName": "Global Filters",
+      "pageType": "PAGE_TYPE_GLOBAL_FILTERS",
+      "layoutVersion": "GRID_V1"
+    }
+  ],
+  "uiSettings": {
+    "theme": {
+      "widgetHeaderAlignment": "ALIGNMENT_UNSPECIFIED"
+    },
+    "applyModeEnabled": false
+  }
+}
