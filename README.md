@@ -1,6 +1,8 @@
 # Fantasy Premier League — Databricks Data Engineering Project
 
-An end-to-end data engineering project built on the Databricks Data Intelligence Platform. Ingests data from the official Fantasy Premier League API, progressively refines it through a medallion architecture (Bronze → Silver → Gold), tracks slowly changing dimensions, enforces data quality with Delta Live Tables, and orchestrates everything with Lakeflow Jobs — all governed by Unity Catalog.
+An exploratory data engineering project built on the Databricks Data Intelligence Platform. The primary goal was to get hands-on with Databricks' core features — Unity Catalog, Delta Lake, Lakeflow Jobs, and Spark Declarative Pipelines — by building an end-to-end pipeline around Fantasy Premier League data.
+
+Data is ingested from the official FPL API, progressively refined through a medallion architecture (Bronze → Silver → Gold), and served to a basic SQL dashboard.
 
 ## Architecture
 
@@ -17,8 +19,6 @@ flowchart LR
         A1(["/bootstrap-static"])
         A2(["/fixtures"])
         A3(["/element-summary"])
-        A4(["/entry"])
-        A5(["/leagues"])
   end
  subgraph Medallion["Medallion Data Architecture"]
     direction LR
@@ -48,8 +48,6 @@ flowchart LR
      A1:::api
      A2:::api
      A3:::api
-     A4:::api
-     A5:::api
      B:::bronze
      S:::silver
      G:::gold
@@ -74,33 +72,31 @@ flowchart LR
 
 ## Data Source
 
-All data comes from the [Fantasy Premier League API](https://fantasy.premierleague.com/api/bootstrap-static/), which is free and requires no authentication for public endpoints.
+All data comes from the [Fantasy Premier League API](https://fantasy.premierleague.com/api/bootstrap-static/), which is free and requires no authentication.
 
 | Endpoint | Description | Grain |
 |----------|-------------|-------|
 | `bootstrap-static/` | Players (50+ stats), teams, gameweeks, positions | Season snapshot |
-| `fixtures/` | Every match with scores, difficulty ratings, per-player stats | Match |
-| `element-summary/{id}/` | Player fixture-by-fixture history (current + prior seasons) | Player × gameweek |
-| `entry/{id}/history/` | Manager gameweek points, chips used, prior seasons | Manager × gameweek |
-| `leagues-classic/{id}/standings/` | Paginated league standings | League × manager |
-| `event/{gw}/live/` | Live gameweek points breakdown per player | Player × gameweek |
+| `fixtures/` | Every match with scores and difficulty ratings | Match |
+| `element-summary/{id}/` | Player fixture-by-fixture history | Player x gameweek |
 
-## What This Project Covers
+## What Was Explored
 
-| Skill | Implementation |
-|-------|---------------|
-| API ingestion | Python `requests` → PySpark DataFrames → Delta tables |
-| Medallion architecture | Bronze (raw + metadata) → Silver (cleaned, typed) → Gold (aggregated) |
-| PySpark transformations | `explode`, struct access, casting, joins across grain levels |
-| Delta Lake MERGE | Incremental upserts for Silver tables |
-| SCD Type 2 | Player price tracking with `effective_from`, `effective_to`, `is_current` |
-| Window functions | Rolling 5-gameweek form, rank calculations |
-| Delta Live Tables | Declarative pipeline with `@dlt.table` and data quality expectations |
-| Data quality | `EXPECT`, `EXPECT_OR_DROP`, `EXPECT_OR_FAIL` constraints |
-| Unity Catalog | Three-level namespace, table tags, column comments, auto lineage |
-| Delta time travel | `VERSION AS OF`, `DESCRIBE HISTORY` |
-| Lakeflow Jobs | Multi-task DAG with scheduling, notifications, dependencies |
-| Dashboards | Databricks SQL visualizations on Gold layer |
+This project was primarily about learning the Databricks environment. Here's what was built and the platform features exercised along the way:
+
+| Skill / Feature | Where |
+|-----------------|-------|
+| API ingestion with Python `requests` + PySpark | `01_ingest_bronze` |
+| Medallion architecture (Bronze → Silver → Gold) | Notebooks 01–04 |
+| PySpark transformations (casting, renaming, joins) | `02_transform_silver` |
+| Delta Lake MERGE for incremental upserts | `02_transform_silver`, `03_scd_prices` |
+| SCD Type 2 for tracking player price changes | `03_scd_prices` |
+| Window functions (rolling 5-gameweek form) | `04_gold_tables` |
+| Lakeflow Spark Declarative Pipelines (SDP) with data quality expectations | `05_sdp_pipeline` |
+| Unity Catalog governance (three-level namespace, tags, comments, lineage) | `sql/unity_catalog_setup` |
+| Delta time travel (`DESCRIBE HISTORY`) | `sql/unity_catalog_setup` |
+| Lakeflow Jobs multi-task DAG orchestration | Configured in the Databricks UI |
+| Basic Databricks SQL dashboard | `sql/dashboard_queries`, `sql/FPL Dashboard.lvdash.json` |
 
 ## Project Structure
 
@@ -110,27 +106,24 @@ fpl-databricks-project/
 ├── README.md
 │
 ├── notebooks/
-│   ├── 01_ingest_bronze.py          # API calls → raw Delta tables
-│   ├── 02_transform_silver.py       # Clean, type, deduplicate, MERGE
-│   ├── 03_scd_prices.py             # SCD Type 2 for player price history
-│   ├── 04_gold_tables.py            # Value rankings, form, differentials
-│   └── 05_dlt_pipeline.py           # Declarative DLT with expectations
+│   ├── 01_ingest_bronze.ipynb       # API calls → raw Delta tables with metadata
+│   ├── 02_transform_silver.ipynb    # Clean, type-cast, deduplicate, MERGE upserts
+│   ├── 03_scd_prices.ipynb          # SCD Type 2 for player price history
+│   ├── 04_gold_tables.ipynb         # Value rankings, rolling form, differentials
+│   └── 05_sdp_pipeline.ipynb        # Declarative pipeline with @dp.expect
 │
-├── sql/
-│   ├── setup_catalog.sql            # CREATE CATALOG / SCHEMA statements
-│   └── dashboard_queries.sql        # Gold layer queries for dashboarding
-│
-└── docs/
-    └── architecture.md              # Design decisions and data dictionary
+└── sql/
+    ├── unity_catalog_setup.dbquery.ipynb   # CREATE CATALOG/SCHEMA, tags, comments
+    ├── dashboard_queries.sql.dbquery.ipynb # Gold-layer queries for the dashboard
+    └── FPL Dashboard.lvdash.json           # Exported dashboard definition
 ```
 
 ## Setup
 
 ### Prerequisites
 
-- A Databricks workspace ([Free Edition](https://www.databricks.com/try-databricks) or 14-day trial for DLT)
-- Python 3.x (for local testing, optional)
-- A GitHub account
+- A Databricks workspace ([Free Edition](https://www.databricks.com/try-databricks) or 14-day trial for SDP pipelines)
+- A GitHub account (for Databricks Repos integration)
 
 ### 1. Clone and connect
 
@@ -142,7 +135,7 @@ In Databricks: **Repos → Add Repo → paste the GitHub URL**.
 
 ### 2. Create the catalog and schemas
 
-Run `sql/setup_catalog.sql` in a notebook or the SQL editor:
+Run `sql/unity_catalog_setup.dbquery.ipynb` in the SQL editor:
 
 ```sql
 CREATE CATALOG IF NOT EXISTS fpl_project;
@@ -155,9 +148,9 @@ CREATE SCHEMA IF NOT EXISTS fpl_project.gold;
 
 Execute notebooks `01` through `04` sequentially for the first load. After the initial run, the MERGE logic handles incremental updates.
 
-### 4. (Optional) Set up the DLT pipeline
+### 4. (Optional) Set up the SDP pipeline
 
-Requires a Premium workspace. Create a pipeline in **Workflows → Delta Live Tables**, point it at `05_dlt_pipeline.py`, and set the target catalog/schema.
+Requires a Premium workspace. Create a pipeline in **Workflows → Pipelines**, point it at `05_sdp_pipeline`, and set the target catalog/schema.
 
 ### 5. Schedule with Lakeflow Jobs
 
@@ -170,17 +163,15 @@ flowchart LR
     classDef gold fill:#ffd700,color:#000,stroke:#b8860b,stroke-width:2px
     classDef pipeline fill:#6a1b9a,color:#fff,stroke:#4a148c,stroke-width:2px
 
-    T1["01 Ingest Bronze<br>API -> Raw Delta"]:::bronze
-    T2["02 Transform Silver<br>Clean · Type · MERGE"]:::silver
-    T3["03 SCD Prices<br>Track Price Changes"]:::silver
-    T4["04 Build Gold<br>Rankings · Form"]:::gold
-    T5["05 DLT Pipeline<br>Declarative + Expectations"]:::pipeline
+    T1["01 Ingest Bronze"]:::bronze
+    T2["02 Transform Silver"]:::silver
+    T3["03 SCD Prices"]:::silver
+    T4["04 Build Gold"]:::gold
+    T5["05 SDP Pipeline"]:::pipeline
 
     T1 --> T2 --> T3 --> T4
     T1 --> T5
 ```
-
-Schedule it weekly after the FPL gameweek deadline (e.g., Saturdays at 2 PM UTC).
 
 ## Gold Layer Outputs
 
@@ -192,14 +183,6 @@ Schedule it weekly after the FPL gameweek deadline (e.g., Saturdays at 2 PM UTC)
 | `differentials` | Low-ownership (<10%) players with high value |
 | `player_price_history` | SCD Type 2 history of every player price change |
 
-## Stretch Goals
-
-- [ ] Scrape top 10k managers' picks for a "wisdom of the crowd" optimal team
-- [ ] Captaincy optimizer using rolling xGI + fixture difficulty
-- [ ] Transfer recommender based on budget, squad, and upcoming schedule
-- [ ] Auto Loader streaming simulation with `cloudFiles`
-- [ ] Package as a Databricks Asset Bundle for CI/CD
-
 ## Tech Stack
 
 - **Platform**: Databricks Data Intelligence Platform
@@ -207,7 +190,7 @@ Schedule it weekly after the FPL gameweek deadline (e.g., Saturdays at 2 PM UTC)
 - **Storage**: Delta Lake (managed tables via Unity Catalog)
 - **Orchestration**: Lakeflow Jobs
 - **Governance**: Unity Catalog
-- **Pipeline framework**: Delta Live Tables (Lakeflow Spark Declarative Pipelines)
+- **Pipeline framework**: Lakeflow Spark Declarative Pipelines (SDP)
 - **Language**: Python (PySpark) + SQL
 - **Data source**: Fantasy Premier League REST API
 - **Version control**: GitHub + Databricks Repos
